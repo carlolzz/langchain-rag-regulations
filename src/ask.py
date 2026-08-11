@@ -22,16 +22,16 @@ def print_response(response_text: str, sources: set) -> None:
 
 
 def ask():
+    
     usr_queries = [
         "Quali sono i requisiti per iscriversi al corso di laurea magistrale computer science and engineering?",
         "Che media devo avere per essere ammesso al corso di laurea magistrale computer science and engineering?"
     ]
 
     for q in usr_queries:
-
         relevant_docs = retrieve(chroma_path=CHROMA_PATH, query=q)
         if not relevant_docs:
-            return
+            continue
 
         response_text = generate_answer(relevant_docs, q)
         print_response(response_text, get_sources(relevant_docs))

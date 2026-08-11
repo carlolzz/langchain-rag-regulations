@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from ftfy import fix_text
 from pathlib import Path
 from typing import List
+import os, shutil, hashlib
 
 
 # Load environment variables (OPENAI_API_KEY)
@@ -19,6 +20,10 @@ CHUNKING_CFG = {
     "base" : {
         "chunk_size": 1000,
         "chunk_overlap": 0
+    },
+    "overlap" : {
+        "chunk_size" :1000,
+        "chunk_overlap": 150,
     }
 }
 
@@ -63,6 +68,13 @@ def load_documents(data_path="data/raw", ext:str="pdf") -> List[Document]:
 
     if len(docs) == 0:
         raise FileNotFoundError(f"Error, no .{ext} files found in {docs_path}.")
+
+    # Store the source as a path relative to the project root, e.g. "data/raw/foo.pdf".
+    # The absolute path would change if the project folder is ever moved or renamed,
+    # which would change every chunk ID and silently duplicate the whole corpus.
+    for doc in docs:
+        source = Path(doc.metadata["source"]).resolve()
+        doc.metadata["source"] = source.relative_to(PROJECT_ROOT).as_posix()
 
     n = 3
     # Show first n documents
@@ -129,7 +141,32 @@ def split_documents(docs: List[Document], chunking_strategy, ext:str="pdf") -> L
     return chunks
 
 
-def create_vector_store(chunks: List[Document], persist_dir="db/chroma_db"):
+# Give every chunk a stable, deterministic ID: hash of source + index within that source
+# + content. Re-running ingest on unchanged files produces the same IDs, so Chroma upserts
+# instead of appending, and the store stays idempotent.
+def build_chunk_ids(chunks: List[Document]) -> List[str]:
+
+    ids = []
+    # How many chunks we have already seen for each source document
+    chunks_per_source = {}
+
+    for chunk in chunks:
+        source = chunk.metadata.get("source", "unknown")
+        idx = chunks_per_source.get(source, 0)
+        chunks_per_source[source] = idx + 1
+
+        raw_id = f"{source}|{idx}|{chunk.page_content}"
+        chunk_id = hashlib.sha256(raw_id.encode("utf-8")).hexdigest()[:16]
+
+        # Keep the ID on the chunk too, so the golden set can point at specific chunks
+        chunk.metadata["chunk_id"] = chunk_id
+        chunk.metadata["chunk_index"] = idx
+        ids.append(chunk_id)
+
+    return ids
+
+
+def create_vector_store(chunks: List[Document], persist_dir="db/chroma_db", replace_db:bool=True):
 
     print(f"Creating embeddings and storing them in ChromaDB...")
 
@@ -137,15 +174,25 @@ def create_vector_store(chunks: List[Document], persist_dir="db/chroma_db"):
     persist_path = PROJECT_ROOT / persist_dir
     persist_path = persist_path.resolve()
 
+    if replace_db:
+        if os.path.exists(persist_path):
+            print(f"Found existing chroma database. Deleting it.")
+            shutil.rmtree(persist_path)
+
+    chunk_ids = build_chunk_ids(chunks)
+
     print(f"Creating vector store...")
     vector_store = Chroma.from_documents(
         documents=chunks,
         embedding=embedding_model,
+        ids=chunk_ids,
         persist_directory=persist_path,
         collection_metadata={"hnsw:space": "cosine"}
     )
 
+    stored = vector_store._collection.count()
     print(f"Successfully created the vector store and saved it to {persist_path}.")
+    print(f"{len(chunks)} chunks ingested, {stored} total in the collection.")
     return vector_store
 
 
@@ -155,4 +202,4 @@ if __name__ == "__main__":
     docs = load_documents(ext=ext)
     docs = clean_documents(docs)
     chunks = split_documents(docs, chunking_strategy="base", ext=ext)
-    vector_store = create_vector_store(chunks, persist_dir="db/chroma_db")
+    vector_store = create_vector_store(chunks, persist_dir="db/chroma_db", replace_db=True)
