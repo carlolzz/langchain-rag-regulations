@@ -26,10 +26,11 @@ def build_context(relevant_docs: List[Tuple[Document, float]]) -> str:
     return "\n\n=====\n\n".join(doc.page_content for doc, _score in relevant_docs)
 
 
+# History aware RAG -> query reformulation
 def generate_answer(
-    relevant_docs: List[Tuple[Document, float]],
-    user_query: str,
-    model_name: str = "gpt-4o",
+        relevant_docs: List[Tuple[Document, float]], 
+        user_query: str, 
+        model_name: str = "gpt-4o", 
 ) -> str:
 
     model = ChatOpenAI(model=model_name)

@@ -13,7 +13,7 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def retrieve(chroma_path: str, query: str, threshold=0.3) -> List[Tuple[Document, float]]:
+def retrieve(chroma_path: str, query: str, k: int = 3, threshold=0.3, collection_name: str = "base_1000_0") -> List[Tuple[Document, float]]:
 
     embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
     persist_path = PROJECT_ROOT / chroma_path
@@ -22,11 +22,12 @@ def retrieve(chroma_path: str, query: str, threshold=0.3) -> List[Tuple[Document
     db = Chroma(
         persist_directory=persist_path,
         embedding_function=embedding_model,
+        collection_name=collection_name,
         collection_metadata={"hnsw:space": "cosine"}
     )
 
     # Search the db for similar results. The relevance score is 1 - cosine distance,
-    # so only chunks scoring >= threshold are kept.
+    # Only chunks scoring >= threshold are kept.
     relevant_docs = db.similarity_search_with_relevance_scores(
         query,
         k=3,
@@ -34,7 +35,6 @@ def retrieve(chroma_path: str, query: str, threshold=0.3) -> List[Tuple[Document
     )
 
     if not relevant_docs:
-        print("Didn't find any matching results.\n")
         return []
     return relevant_docs
 

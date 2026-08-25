@@ -19,10 +19,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CHUNKING_CFG = {
     "base" : {
         "chunk_size": 1000,
-        "chunk_overlap": 0
+        "chunk_overlap": 0  
     },
     "overlap" : {
-        "chunk_size" :1000,
+        "chunk_size": 1000,
         "chunk_overlap": 150,
     }
 }
@@ -52,10 +52,11 @@ def load_documents(data_path="data/raw", ext:str="pdf") -> List[Document]:
         raise FileNotFoundError(f"Error, directory {docs_path} not found.")
 
     if ext not in LOADER_CFG:
-        supported = ", ".join(sorted(LOADER_CFG))
+        supported = ", ".join(sorted(LOADER_CFG.keys()))
         raise ValueError(f"Error, unsupported extension .{ext}. Supported: {supported}.")
 
     loader_cls, loader_kwargs = LOADER_CFG[ext]
+    # e.g. pdf - PyPDFLoader
 
     loader = DirectoryLoader(
         path=docs_path,
@@ -70,8 +71,8 @@ def load_documents(data_path="data/raw", ext:str="pdf") -> List[Document]:
         raise FileNotFoundError(f"Error, no .{ext} files found in {docs_path}.")
 
     # Store the source as a path relative to the project root, e.g. "data/raw/foo.pdf".
-    # The absolute path would change if the project folder is ever moved or renamed,
-    # which would change every chunk ID and silently duplicate the whole corpus.
+    # The absolute path would change if the project folder is ever moved or renamed
+    # This would change every chunk ID and silently duplicate the whole corpus.
     for doc in docs:
         source = Path(doc.metadata["source"]).resolve()
         doc.metadata["source"] = source.relative_to(PROJECT_ROOT).as_posix()
@@ -100,7 +101,6 @@ def clean_documents(docs: List[Document]) -> List[Document]:
             n_fixed += 1
 
     print(f"\nRepaired text encoding in {n_fixed}/{len(docs)} documents.")
-
     return docs
 
 
@@ -109,6 +109,7 @@ def split_documents(docs: List[Document], chunking_strategy, ext:str="pdf") -> L
     cfg = CHUNKING_CFG.get(chunking_strategy)
     if not cfg:
         raise ValueError(f"Unknown chunking strategy '{chunking_strategy}'. Options: {', '.join(CHUNKING_CFG)}")
+    
     chunk_size, chunk_overlap = cfg["chunk_size"], cfg["chunk_overlap"]
 
     if ext not in SPLITTER_CFG:
@@ -129,6 +130,7 @@ def split_documents(docs: List[Document], chunking_strategy, ext:str="pdf") -> L
     n = 5
     if chunks:
         for idx, chunk in enumerate(chunks[:n]):
+            print(f"=" * 100)
             print(f"\n===== Chunk {idx + 1} =====")
             print(f"Source: {chunk.metadata['source']}")
             print(f"Length: {len(chunk.page_content)} characters")
@@ -136,14 +138,14 @@ def split_documents(docs: List[Document], chunking_strategy, ext:str="pdf") -> L
             print(f"=" * 100)
 
     if len(chunks) > n:
-        print(f"\n{len(chunks) - 5} more chunks remaining")
+        print(f"\n{len(chunks) - n} more chunks remaining.")
 
     return chunks
 
 
-# Give every chunk a stable, deterministic ID: hash of source + index within that source
-# + content. Re-running ingest on unchanged files produces the same IDs, so Chroma upserts
-# instead of appending, and the store stays idempotent.
+# Give every chunk a stable, deterministic ID: hash of source + index within that source + content. 
+# Re-running ingest on unchanged files produces the same IDs
+# Chroma upserts instead of appending, and the store stays idempotent.
 def build_chunk_ids(chunks: List[Document]) -> List[str]:
 
     ids = []
@@ -166,7 +168,7 @@ def build_chunk_ids(chunks: List[Document]) -> List[str]:
     return ids
 
 
-def create_vector_store(chunks: List[Document], persist_dir="db/chroma_db", replace_db:bool=True):
+def create_vector_store(chunks: List[Document], persist_dir="db/chroma_db", collection_name: str = "base_1000_0", replace_db:bool=True):
 
     print(f"Creating embeddings and storing them in ChromaDB...")
 
@@ -175,9 +177,15 @@ def create_vector_store(chunks: List[Document], persist_dir="db/chroma_db", repl
     persist_path = persist_path.resolve()
 
     if replace_db:
-        if os.path.exists(persist_path):
-            print(f"Found existing chroma database. Deleting it.")
-            shutil.rmtree(persist_path)
+
+        try:
+            Chroma(
+                persist_directory=str(persist_path),
+                embedding_function=embedding_model,
+                collection_name=collection_name,
+            ).delete_collection()
+        except Exception:
+            pass
 
     chunk_ids = build_chunk_ids(chunks)
 
@@ -187,6 +195,7 @@ def create_vector_store(chunks: List[Document], persist_dir="db/chroma_db", repl
         embedding=embedding_model,
         ids=chunk_ids,
         persist_directory=persist_path,
+        collection_name=collection_name,
         collection_metadata={"hnsw:space": "cosine"}
     )
 
