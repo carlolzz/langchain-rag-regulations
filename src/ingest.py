@@ -1,4 +1,5 @@
 
+from collections import Counter, defaultdict
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, DirectoryLoader
 from langchain_core.documents import Document
 from langchain_text_splitters import MarkdownTextSplitter, RecursiveCharacterTextSplitter
@@ -8,24 +9,20 @@ from dotenv import load_dotenv
 from ftfy import fix_text
 from pathlib import Path
 from typing import List
-import os, shutil, hashlib
+import hashlib
+import re
+
+from src.config import EMBEDDING_MODEL, EMBEDDING_ABBR, CHUNKING_STRATEGY, CHUNKING_CFG, F_EXT, get_collection_name
 
 
 # Load environment variables (OPENAI_API_KEY)
 load_dotenv()
 
 
+# parent -> parent, only 1 .parent gives src/
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CHUNKING_CFG = {
-    "base" : {
-        "chunk_size": 1000,
-        "chunk_overlap": 0  
-    },
-    "overlap" : {
-        "chunk_size": 1000,
-        "chunk_overlap": 150,
-    }
-}
+DATA_RAW_DIR = PROJECT_ROOT / "data" / "raw"
+KEY_PREFIX = 60
 
 # Which loader (and its kwargs) handles each supported file extension
 LOADER_CFG = {
@@ -36,9 +33,9 @@ LOADER_CFG = {
 
 # Which splitter suits the structure of each supported file extension.
 SPLITTER_CFG = {
-    "pdf" : RecursiveCharacterTextSplitter,
-    "txt" : RecursiveCharacterTextSplitter,
-    "md"  : MarkdownTextSplitter,
+    "pdf" : (RecursiveCharacterTextSplitter, "rcts"),
+    "txt" : (RecursiveCharacterTextSplitter, "rcts"),
+    "md"  : (MarkdownTextSplitter, "mdts")
 }
 
 
@@ -89,6 +86,35 @@ def load_documents(data_path="data/raw", ext:str="pdf") -> List[Document]:
     return docs
 
 
+# whitespaces -> " " -> digits -> #
+def _key(line: str) -> str:
+    norm: str = re.sub(r"\d+", "#", re.sub(r"\s+", " ", line)).strip().lower()
+    return norm[:KEY_PREFIX]
+
+
+def strip_page_furniture(docs, min_page_fraction: float = 0.8, min_len: int = 12) -> List[Document]:
+    """Drop lines that repeat on nearly every page of the same document"""
+
+    # Pairs [docs metadata source (file and page), document itself]
+    by_source = defaultdict(list)
+    for d in docs:
+        by_source[d.metadata["source"]].append(d)
+
+    for _source, pages in by_source.items():
+        counts = Counter()
+        for p in pages:
+            # Take every line in the page content, apply _key regex function
+            # Update the count of said line if the lenght is longer than min_len
+            counts.update({_key(line) for line in p.page_content.splitlines() if len(line.strip()) >= min_len})
+        # line is boilerplate if it appears min_page_fraction * num_of_pages time
+        boilerplate = {line for line, cnt in counts.items() if cnt >= min_page_fraction * len(pages)}
+        for p in pages:
+            p.page_content = "\n".join(
+                line for line in p.page_content.splitlines() if _key(line) not in boilerplate
+            )
+    return docs
+
+
 # Repair mojibake left behind by PDF text extraction, in place.
 # e.g. "societÃ  di ingegneria" -> "società di ingegneria"
 def clean_documents(docs: List[Document]) -> List[Document]:
@@ -116,7 +142,8 @@ def split_documents(docs: List[Document], chunking_strategy, ext:str="pdf") -> L
         supported = ", ".join(sorted(SPLITTER_CFG))
         raise ValueError(f"Error, unsupported extension .{ext}. Supported: {supported}.")
 
-    splitter_cls = SPLITTER_CFG[ext]
+    # "pdf" : (RecursiveCharacterTextSplitter, "RCS"),
+    splitter_cls, _abbr = SPLITTER_CFG[ext]
 
     print(f"Splitting .{ext} documents into chunks with {splitter_cls.__name__}...")
 
@@ -168,16 +195,17 @@ def build_chunk_ids(chunks: List[Document]) -> List[str]:
     return ids
 
 
-def create_vector_store(chunks: List[Document], persist_dir="db/chroma_db", collection_name: str = "base_1000_0", replace_db:bool=True):
+def create_vector_store(chunks: List[Document], chunking_strategy: str, ext: str, persist_dir="db/chroma_db", replace_db:bool=True):
 
     print(f"Creating embeddings and storing them in ChromaDB...")
 
-    embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    embedding_model = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     persist_path = PROJECT_ROOT / persist_dir
     persist_path = persist_path.resolve()
 
-    if replace_db:
+    collection_name = get_collection_name(chunking_strategy, ext, EMBEDDING_MODEL)
 
+    if replace_db:
         try:
             Chroma(
                 persist_directory=str(persist_path),
@@ -205,10 +233,33 @@ def create_vector_store(chunks: List[Document], persist_dir="db/chroma_db", coll
     return vector_store
 
 
+def detect_extension(data_path: Path) -> str:
+
+    # get extensions of all files in data/raw
+    exts = {p.suffix.lstrip(".").lower() for p in data_path.iterdir() if p.is_file()}
+    # set intersection with existing allowed extensions
+    exts &= LOADER_CFG.keys()
+    if not exts:
+        raise FileNotFoundError(f"No supported files in {data_path}. Supported: {sorted(LOADER_CFG)}")
+    if len(exts) > 1:
+        raise ValueError(f"Mixed extensions in {data_path}: {sorted(exts)}. Ingest one type per run.")
+
+    return exts.pop()
+
+
 if __name__ == "__main__":
+
     # Loading the files, cleaning them, splitting them in chunks, and saving them to a vector db
-    ext = "pdf"
-    docs = load_documents(ext=ext)
-    docs = clean_documents(docs)
-    chunks = split_documents(docs, chunking_strategy="base", ext=ext)
-    vector_store = create_vector_store(chunks, persist_dir="db/chroma_db", replace_db=True)
+    # Not hardcoding the extension, let the function get it
+    ext = detect_extension(DATA_RAW_DIR)
+
+    if ext != F_EXT:
+        raise ValueError(
+            f"config.EXT is {F_EXT} but {DATA_RAW_DIR} contains .{ext}"
+            f"The collection name derives from this, update one or the other."
+        )
+
+    raw_docs = load_documents(ext=ext)
+    cleaned_docs = strip_page_furniture(clean_documents(raw_docs))
+    chunks = split_documents(cleaned_docs, CHUNKING_STRATEGY, ext)
+    vector_store = create_vector_store(chunks, CHUNKING_STRATEGY, ext, persist_dir="db/chroma_db", replace_db=True)

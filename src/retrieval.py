@@ -13,9 +13,9 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def retrieve(chroma_path: str, query: str, k: int = 3, threshold=0.3, collection_name: str = "base_1000_0") -> List[Tuple[Document, float]]:
+def retrieve(chroma_path: str, query: str, collection_name: str, embedding_model_name: str, k: int = 3, threshold=0.3) -> List[Tuple[Document, float]]:
 
-    embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    embedding_model = OpenAIEmbeddings(model=embedding_model_name)
     persist_path = PROJECT_ROOT / chroma_path
     persist_path = persist_path.resolve()
 
@@ -26,11 +26,17 @@ def retrieve(chroma_path: str, query: str, k: int = 3, threshold=0.3, collection
         collection_metadata={"hnsw:space": "cosine"}
     )
 
+    if db._collection.count() == 0:
+        raise ValueError(
+            f"Collection {collection_name!r} is empty or missing in {persist_path}."
+            "Run `uv run python -m src.ingest` first."
+        )
+
     # Search the db for similar results. The relevance score is 1 - cosine distance,
     # Only chunks scoring >= threshold are kept.
     relevant_docs = db.similarity_search_with_relevance_scores(
         query,
-        k=3,
+        k=k,
         score_threshold=threshold,
     )
 

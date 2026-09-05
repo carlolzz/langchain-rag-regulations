@@ -4,16 +4,13 @@ from src.generate import generate_answer
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langchain_openai import ChatOpenAI
 from typing import List, Optional, Tuple
+from src.config import CHROMA_PATH, EMBEDDING_MODEL, LLM_MODEL, get_collection_name
 
-
-CHROMA_PATH = "db/chroma_db"
 SEP_WIDTH = 100
 CHAT_HISTORY = []
-MODEL_NAME = "gpt-4o"
 MAX_HISTORY_TURNS = 4
-NO_CONTEXT_MSG = "Could not find any relevant information in the corpus"
-REWRITE_SYSTEM_PROMPT = """
-Given the chat history, rewrite the user's new question so that it can be understood on its own, without the history. 
+NO_CONTEXT_MSG = "Could not find any relevant information in the corpus."
+REWRITE_SYSTEM_PROMPT = """Given the chat history, rewrite the user's new question so that it can be understood on its own, without the history. 
 Resolve pronouns and implicit references into explicit terms. Do not answer the question. 
 If the question is already self-contained, return it unchanged. Return only the rewritten question, with no preamble.
 """
@@ -48,19 +45,25 @@ def print_response(response_text: str, sources: set) -> None:
     print("=" * SEP_WIDTH + "\n")
 
 
-def ask(query: str, model_name: str, history: Optional[List[BaseMessage]] = None, history_aware: bool=True) -> Tuple[str, set]:
+def ask(query: str, emb_model_name: str, llm_model: str, history: Optional[List[BaseMessage]] = None, history_aware: bool=True) -> Tuple[str, set]:
 
     # Not a mutable default argument, the list would be shared by every call
     history = history if history is not None else []
-    search_query = rewrite_query(query, history, model_name) if history_aware else query
+    search_query = rewrite_query(query, history, llm_model) if history_aware else query
 
     # Get relevant documents
-    relevant_docs = retrieve(chroma_path=CHROMA_PATH, query=search_query) 
+    # Collection name not hardcoded
+    relevant_docs = retrieve(
+        chroma_path=CHROMA_PATH, 
+        query=search_query, 
+        collection_name=get_collection_name(),
+        embedding_model=emb_model_name
+    ) 
 
     if not relevant_docs:
         answer, sources = NO_CONTEXT_MSG, set()
     else:
-        answer = generate_answer(relevant_docs, query, model_name)
+        answer = generate_answer(relevant_docs, query, llm_model)
         sources = get_sources(relevant_docs)
 
     # Add context to the history
@@ -89,7 +92,7 @@ def start_chat_cli():
             continue
         if question.lower() in {"!quit", "!q"}:
             break
-        answer, sources = ask(query=question, model_name=MODEL_NAME, history=history, history_aware=True)
+        answer, sources = ask(query=question, model_name=EMBEDDING_MODEL, llm_model=LLM_MODEL, history=history, history_aware=True)
         print_response(answer, sources)
 
 
