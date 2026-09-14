@@ -1,6 +1,6 @@
-"""Pre-flight check on a candidate corpus, before any golden-set work starts.
+"""Analyzes the existing corpus before the golden set is checked.
 
-Run this on a directory of PDFs *before* writing a single question. It answers the
+Run this on a directory of PDFs before writing a single question. It answers the
 three things that silently waste days if you find them out later:
 
   1. Is there a text layer at all, or is the PDF scanned?

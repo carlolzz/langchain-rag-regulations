@@ -7,7 +7,7 @@ The source PDFs are located in `data/raw/`, which is **gitignored** and not dist
 
 ## Documents
 
-Six *regolamenti didattici* (degree-programme academic regulations) from Politecnico di Milano, School of Industrial and Information Engineering-
+Six *regolamenti edilizi comunali* from 6 different Italian cities.
 
 | File (`data/raw/`) | Programme | Url
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Six *regolamenti didattici* (degree-programme academic regulations) from Politec
 
 ## Licensing
 
-*Art.5 of L. 633/1941* states that the law does not apply to *i testi degli atti ufficiali dello stato e delle Amministrazioni pubbliche*. The documents are published openly on the listed websites, and are not reproduced here, neither in the repository nor in any distributed artefact.
+*Art.5 of L. 633/1941* states that the law does not apply to "*i testi degli atti ufficiali dello stato e delle Amministrazioni pubbliche*". The documents are published openly on the listed websites, and are not reproduced here, neither in the repository nor in any distributed artefact.
 
 ## Reproducing the corpus
 

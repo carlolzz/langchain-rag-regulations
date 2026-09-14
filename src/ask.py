@@ -4,7 +4,8 @@ from src.generate import generate_answer
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langchain_openai import ChatOpenAI
 from typing import List, Optional, Tuple
-from src.config import CHROMA_PATH, EMBEDDING_MODEL, LLM_MODEL, get_collection_name
+from src.config import CHUNKING_STRATEGY, F_EXT, CHROMA_PATH, EMBEDDING_MODEL, LLM_MODEL, get_collection_name
+
 
 SEP_WIDTH = 100
 CHAT_HISTORY = []
@@ -56,8 +57,8 @@ def ask(query: str, emb_model_name: str, llm_model: str, history: Optional[List[
     relevant_docs = retrieve(
         chroma_path=CHROMA_PATH, 
         query=search_query, 
-        collection_name=get_collection_name(),
-        embedding_model=emb_model_name
+        collection_name=get_collection_name(CHUNKING_STRATEGY, F_EXT, emb_model_name),
+        emb_model_name=emb_model_name
     ) 
 
     if not relevant_docs:
@@ -92,7 +93,7 @@ def start_chat_cli():
             continue
         if question.lower() in {"!quit", "!q"}:
             break
-        answer, sources = ask(query=question, model_name=EMBEDDING_MODEL, llm_model=LLM_MODEL, history=history, history_aware=True)
+        answer, sources = ask(query=question, emb_model_name=EMBEDDING_MODEL, llm_model=LLM_MODEL, history=history, history_aware=True)
         print_response(answer, sources)
 
 
