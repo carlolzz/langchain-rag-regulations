@@ -87,13 +87,20 @@ def start_chat_cli():
     history: List[BaseMessage] = []
 
     while True:
+        
         question = input("\nYour question:").strip()
 
         if not question:
             continue
         if question.lower() in {"!quit", "!q"}:
             break
-        answer, sources = ask(query=question, emb_model_name=EMBEDDING_MODEL, llm_model=LLM_MODEL, history=history, history_aware=True)
+        answer, sources = ask(
+            query=question, 
+            emb_model_name=EMBEDDING_MODEL, 
+            llm_model=LLM_MODEL, 
+            history=history,
+            history_aware=True
+        )
         print_response(answer, sources)
 
 

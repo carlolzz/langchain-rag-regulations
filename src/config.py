@@ -6,7 +6,7 @@ DATA_RAW: str = "data/raw"
 
 F_EXT: str = "pdf"
 EMBEDDING_MODEL: str = "text-embedding-3-small"
-EMBEDDING_ABBR: dict = {"text-embedding-3-small": "e3s"}
+EMBEDDING_ABBR: dict[str, str] = {"text-embedding-3-small": "e3s"}
 LLM_MODEL: str = "gpt-4o"
 
 CHUNKING_STRATEGY: str = "base"
@@ -19,12 +19,14 @@ CHUNKING_CFG: dict = {
 
 
 def get_collection_name(chunking_strategy: str, ext: str = "pdf", embedding_model: str = EMBEDDING_MODEL) -> str:
+    """Constructs the collection name based on the given configuration.
+    Examples: base_1000_0_pdf_e3s, overlap_1000_150_pdf_e3s, article_2000_0_pdf_e3s, semantic_p95_pdf_e3s."""
 
     # cfg = {"splitter": ...}
     cfg: dict = CHUNKING_CFG[chunking_strategy]
 
-    cfg_kwargs = "_".join(map(str, list(cfg[chunking_strategy].values())))
-    # Example: "base_recursive_1000_0_pdf_e3s"
-    filename: str = f"{cfg_kwargs}_{ext}_{EMBEDDING_ABBR[embedding_model]}"
+    # Only size parameters go in the name, and only when the splitter has them
+    # * unpacks the list to individual elements
+    size_params = [str(cfg[key]) for key in ("chunk_size", "chunk_overlap") if key in cfg]
 
-    return filename
+    return '_'.join([chunking_strategy, *size_params, ext, EMBEDDING_ABBR[embedding_model]])

@@ -39,7 +39,7 @@ MAX_QUOTE_WORDS = 20
 # U+2019 -> U+0027 because these PDFs mix the two within one sentence:
 # "s'intende" is ASCII but "dell'edificio" is typographic.
 def normalize(text: str) -> str:
-    """Normalizes text be handling U+2019 and U+0027 unicode characters"""
+    """Normalizes text be handling U+2019 and U+0027 unicode characters."""
     text = text.replace("’", "'").replace("­", "")
     return re.sub(r"\s+", " ", text).strip().lower()
 

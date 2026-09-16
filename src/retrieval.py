@@ -13,7 +13,18 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def retrieve(chroma_path: str, query: str, collection_name: str, emb_model_name: str, k: int = 3, threshold=0.3) -> List[Tuple[Document, float]]:
+def retrieve(
+        chroma_path: str, 
+        query: str, 
+        collection_name: str, 
+        emb_model_name: str, 
+        k: int = 3, 
+        threshold: float = 0.3,
+        mode:str = "dense"
+    ) -> List[Tuple[Document, float]]:
+
+    if mode != "dense":
+        raise NotImplementedError(f"mode={mode!r} not implemented yet.")
 
     embedding_model = OpenAIEmbeddings(model=emb_model_name)
     persist_path = PROJECT_ROOT / chroma_path
@@ -34,6 +45,7 @@ def retrieve(chroma_path: str, query: str, collection_name: str, emb_model_name:
 
     # Search the db for similar results. The relevance score is 1 - cosine distance,
     # Only chunks scoring >= threshold are kept.
+    # k = number of top documents to retrieve
     relevant_docs = db.similarity_search_with_relevance_scores(
         query,
         k=k,

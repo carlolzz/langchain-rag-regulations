@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple
 
 from langchain_core.documents import Document
 
-REFUSAL_PREFIX: str = "Could not find any relevant information"
+REFUSAL_PHRASE: str = "could not find any relevant information"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -47,10 +47,10 @@ def hit_at_k(retrieved: Retrieved, question: dict, k: int) -> float:
     # Slice to the top k
     retrieved_cut: List[Tuple[Document, float]]  = retrieved[:k]
 
-    # doc[0] = Document
     return float(any(is_hit(doc, question) for doc, _score in retrieved_cut))
 
 
+# Recall: how many relevant items are retrieved?
 def recall_at_k(retrieved: Retrieved, question: dict, k: int) -> float:
     """Fraction of this question's gold quotes present in the top k."""
 
@@ -61,6 +61,7 @@ def recall_at_k(retrieved: Retrieved, question: dict, k: int) -> float:
     retrieved_cut = retrieved[:k]
     texts = [normalize(doc.page_content) for doc, _score in retrieved_cut if doc.metadata.get("source") == question.get("source")]
 
+    # is this quote inside at least one of the top-k chunks that came from the right source?
     found: float = sum(any(normalize(q) in text for text in texts) for q in gold_quotes)
 
     return found / len(gold_quotes)
@@ -78,10 +79,11 @@ def reciprocal_rank(retrieved: Retrieved, question: dict) -> float:
 
 def refused(answer: str) -> bool:
     """True if the system declined to answer."""
-    return normalize(answer).startswith(REFUSAL_PREFIX)
+    return REFUSAL_PHRASE in normalize(answer)
 
 
 # Aggregation, this is what run_eval.py calls.
+# Returns a dictionary with score names and their associated scores
 def score_in_corpus(results: List[Tuple[dict, Retrieved]], ks: Tuple[int, ...]) -> Dict[str, float]:
     """Mean hit@k / recall@k for each k, plus MRR, over in_corpus questions only."""
 
@@ -96,7 +98,7 @@ def score_in_corpus(results: List[Tuple[dict, Retrieved]], ks: Tuple[int, ...]) 
 
     scores["mrr"] = mean(reciprocal_rank(retrieved, entry) for entry, retrieved in f_res)
 
-    raise scores
+    return scores
 
 
 def score_out_of_corpus(answers: List[Tuple[dict, str]]) -> Dict[str, float]:
@@ -111,10 +113,10 @@ def score_out_of_corpus(answers: List[Tuple[dict, str]]) -> Dict[str, float]:
     in_n_refused = len([answer for _gold, answer in in_corpus_answers if refused(answer)])
     in_n = len(in_corpus_answers)
 
-    if in_n_refused == 0 or out_n_refused == 0:
-        raise ValueError(f"Error, in_corpus entries or out_of_corpus entries are empty, this will cause a ZeroDivisionError.")
+    if in_n == 0 or out_n == 0:
+        raise ValueError(f"Need both in_corpus and out_of_corpus answers, or a rate divides by zero.")
 
     return {
-        "refusal_rate": out_n_refused / out_n,
-        "false_refusal_rate": in_n_refused / in_n
+        "refusal_rate": float(out_n_refused / out_n),
+        "false_refusal_rate": float(in_n_refused / in_n)
     }

@@ -14,3 +14,8 @@ dependencies = [
     "pypdf>=6.15.0",
     "python-dotenv>=1.2.2",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
