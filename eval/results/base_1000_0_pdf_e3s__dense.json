@@ -12,8 +12,8 @@
   "embedding_model": "text-embedding-3-small",
   "n_questions": 25,
   "n_in_corpus": 19,
-  "git_commit": "fe68cc0+dirty",
-  "timestamp": "2026-09-16T22:08:55+00:00",
+  "git_commit": "81fdb54+dirty",
+  "timestamp": "2026-09-17T09:23:08+00:00",
   "scores": {
     "hit@1": 0.3684210526315789,
     "recall@1": 0.34210526315789475,

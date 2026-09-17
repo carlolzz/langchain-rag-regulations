@@ -15,10 +15,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 
 # U+2019 -> U+0027 and strips soft hyphens, both of which this corpus needs
-# Scorer normalisez differently from the validator, quote could pass validation and then never score a hit 
+# Scorer normalizes differently from the validator, quote could pass validation and then never score a hit 
 from eval.validate_golden_set import normalize
 
 # What retrieve() hands back
+# List of (docs, score) tuples
 Retrieved = List[Tuple[Document, float]]
 
 
@@ -40,17 +41,19 @@ def is_hit(chunk: Document, question: dict) -> bool:
     return False
 
 
-# The three retrieval metrics. 
 def hit_at_k(retrieved: Retrieved, question: dict, k: int) -> float:
     """1.0 if any of the top k retrieved chunks hits, else 0.0."""
 
     # Slice to the top k
     retrieved_cut: List[Tuple[Document, float]]  = retrieved[:k]
 
+    # 1.0 if any retrieved chunk contains the golden quote
     return float(any(is_hit(doc, question) for doc, _score in retrieved_cut))
 
 
-# Recall: how many relevant items are retrieved?
+# 1 gold quote, 1 found in 1 out of n retrieved documents = 1.0
+# 2 gold quotes, 1 found in 1 out of N retrieved documents, 1/N
+# 2 gold quotes, 2 found in 2 out of N retrieved documents, 2/N
 def recall_at_k(retrieved: Retrieved, question: dict, k: int) -> float:
     """Fraction of this question's gold quotes present in the top k."""
 
@@ -84,8 +87,12 @@ def refused(answer: str) -> bool:
 
 # Aggregation, this is what run_eval.py calls.
 # Returns a dictionary with score names and their associated scores
+# Results: [(golden_entry, [(retrieved_doc_1, score_1), (retrieved_doc_2, score_2), ...]), ...]
 def score_in_corpus(results: List[Tuple[dict, Retrieved]], ks: Tuple[int, ...]) -> Dict[str, float]:
-    """Mean hit@k / recall@k for each k, plus MRR, over in_corpus questions only."""
+    """
+    Mean hit@k / recall@k for each k, plus MRR, over in_corpus questions only.
+    Returns a dictionary with all scores associated for each k value.
+    """
 
     # Filtered results
     f_res = [(entry, retrieved) for entry, retrieved in results if entry.get("type") == "in_corpus"]

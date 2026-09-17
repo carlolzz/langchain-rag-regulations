@@ -26,17 +26,20 @@ def make_doc(text: str, source: str = FIRENZE, score: float = 0.5):
     """One (Document, score) pair, the shape retrieve() returns.
     Returning the pair forces the tests to exercise the same unpacking the real code does.
     """
+    
     return (Document(page_content=text, metadata={"source": source}), score)
 
 
 def make_question(quotes, source: str = FIRENZE, qtype: str = "in_corpus") -> dict:
     """A minimal golden-set entry. Only the fields the metrics actually read."""
+
     return {"id": "qTEST", "source": source, "gold_quotes": quotes, "type": qtype}
 
 
 # is_hit - the foundation
 def test_hit_requires_matching_source():
     """The right text in the wrong document is a miss."""
+
     question = make_question([QUOTE])
     text = f"Art. 27 - Si intende {QUOTE} e il confine antistante"
 
@@ -45,24 +48,25 @@ def test_hit_requires_matching_source():
 
     assert is_hit(wrong_doc, question) is False
     assert is_hit(right_doc, question) is True
-    
-    raise NotImplementedError("TODO 1")
 
 
 def test_normalize_survives_pdf_newlines():
-    """A quote split across a newline still matches.
+    """A quote split across a newline still matches."""
 
-    Worth adding while you are here: a case with the typographic apostrophe
-    U+2019 in the chunk and the ASCII one in the quote. The Firenze PDF mixes
-    both inside one sentence, so this is a real input, not a hypothetical.
-    """
     question = make_question([QUOTE])
-    chunk, _ = make_doc("la lunghezza del segmento mininmo\n    congiungente la parete \n più avanzata del fabbricato")
+    chunk, _ = make_doc("la lunghezza del segmento minimo\n    congiungente la parete \n più avanzata del fabbricato")
 
-    u2019_quote = "l’esecuzione di opere di conformazione, sulla base di idonea ordinanza e entro i relativi termini"
-    u2019_chunk, _ = make_doc()
+    # The PDF carries U+2019, the golden set was typed with U+0027. The two sides must differ:
+    # - with the same apostrophe on both, this passes as a plain substring check and normalize()
+    # - could be deleted without the test noticing.
+    apostrophe_question = make_question(["l'esecuzione di opere di conformazione, sulla base di idonea ordinanza"])
+    apostrophe_chunk, _ = make_doc(
+        "Il Comune ordina l’esecuzione di opere di conformazione, sulla base di idonea "
+        "ordinanza e entro i relativi termini"
+    )
 
     assert is_hit(chunk, question)
+    assert is_hit(apostrophe_chunk, apostrophe_question)
 
 
 # ranking metrics
@@ -72,7 +76,7 @@ def test_reciprocal_rank_is_half_at_rank_two():
     error is invisible in aggregate - MRR just looks flattering."""
 
     question = make_question([QUOTE])
-    retrieved = [make_doc("niente di utile"), make_doc([QUOTE]), make_doc("altro testo")]
+    retrieved = [make_doc("niente di utile"), make_doc(QUOTE), make_doc("altro testo")]
 
     assert reciprocal_rank(retrieved, question) == 0.5
 
@@ -89,14 +93,12 @@ def test_miss_returns_zero():
     assert rr == 0.0 and isinstance(rr, float)
     assert hit == 0.0 and isinstance(hit, float)
 
-    raise NotImplementedError("TODO 4")
-
 
 def test_hit_at_k_respects_k():
     """A hit at rank 5 is invisible at k=3."""
 
     question = make_question([QUOTE])
-    retrieved = [make_doc(f"riempitivo{i}") for i in range(4)] + make_doc([QUOTE])
+    retrieved = [make_doc(f"riempitivo{i}") for i in range(4)] + [make_doc(QUOTE)]
 
     assert hit_at_k(retrieved, question, k=3) == 0.0
     assert hit_at_k(retrieved, question, k=5) == 1.0
@@ -107,13 +109,12 @@ def test_hit_at_k_respects_k():
 # ---------------------------------------------------------------------------
 def test_recall_is_partial_when_one_of_two_quotes_found():
     """Two gold quotes, one retrieved: recall = 0.5, hit = 1.0."""
+
     question = make_question([Q1, Q2])
     retrieved = [make_doc(f"Le costruzioni devono avere {Q1}"), make_doc("niente di utile")]
 
     assert recall_at_k(retrieved, question, k=2) == 0.5
     assert hit_at_k(retrieved, question, k=2) == 1.0
-
-    raise NotImplementedError("TODO 6")
 
 
 def test_recall_ignores_quotes_from_the_wrong_source():

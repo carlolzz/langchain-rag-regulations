@@ -18,11 +18,12 @@ from collections import defaultdict, Counter
 from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Dict, List, Tuple
+import argparse
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import CHUNKING_STRATEGY, F_EXT
+from src.config import CHUNKING_STRATEGY, CHUNKING_CFG, F_EXT
 from src.ingest import load_documents, clean_documents, strip_page_furniture, split_documents
 
 GOLDEN_SET_PATH = PROJECT_ROOT / "data" / "eval" / "golden_set.jsonl"
@@ -46,7 +47,7 @@ def normalize(text: str) -> str:
 
 # Returns the corpus at two granularities, because they catch different bugs.
 # Returns -> [pages_by_source : { source -> [(page number, normalized page text)] }, { source -> [normalized chunk text]} ]
-def build_corpus() -> Tuple[Dict[str, List[Tuple[int, str]]], Dict[str, List[str]]]:
+def build_corpus(strategy: str = CHUNKING_STRATEGY) -> Tuple[Dict[str, List[Tuple[int, str]]], Dict[str, List[str]]]:
     """Run the real ingestion pipeline, minus the embedding call."""
 
     print("Rebuilding the corpus through the ingestion pipeline (no embeddings)...")
@@ -55,7 +56,7 @@ def build_corpus() -> Tuple[Dict[str, List[Tuple[int, str]]], Dict[str, List[str
     with redirect_stdout(io.StringIO()):
         docs = load_documents(ext=F_EXT)
         docs = strip_page_furniture(clean_documents(docs))
-        chunks = split_documents(docs, CHUNKING_STRATEGY, F_EXT)
+        chunks = split_documents(docs, strategy, F_EXT)
 
     # { source -> [(page number, normalized page text)] }
     # { source -> [(0, "..."), (1, "...")] }
@@ -173,7 +174,14 @@ def check_quotes(entry: dict, pages_by_source, chunks_by_source) -> Tuple[List[s
 
 def main() -> int:
 
-    pages_by_source, chunks_by_source = build_corpus()
+    parser = argparse.ArgumentParser(description="Validate the golden set against the ingested corpus.")
+    parser.add_argument(
+        "--strategy",
+        default=CHUNKING_STRATEGY,
+        choices=list(CHUNKING_CFG)
+    )
+
+    pages_by_source, chunks_by_source = build_corpus(parser.parse_args().strategy)
     entries: List[dict] = load_entries(GOLDEN_SET_PATH)
 
     if not entries:

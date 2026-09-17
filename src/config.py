@@ -9,6 +9,7 @@ EMBEDDING_MODEL: str = "text-embedding-3-small"
 EMBEDDING_ABBR: dict[str, str] = {"text-embedding-3-small": "e3s"}
 LLM_MODEL: str = "gpt-4o"
 
+DEFAULT_THRESHOLDS: dict[str, float | None] = {"dense": 0.3, "bm25": None, "hybrid": None, "rerank": None}
 CHUNKING_STRATEGY: str = "base"
 CHUNKING_CFG: dict = {
     "base":         {"splitter": "recursive", "chunk_size": 1000, "chunk_overlap": 0},
