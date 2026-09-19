@@ -1,14 +1,12 @@
 
-"""
-Validate data/eval/golden_set.jsonl before it is ever used to score a retriever.
-
-A golden set with an unverifiable quote is worse than no golden set.
-
-Quotes are checked against the same text the retriever sees.
-Run from the project root:  python eval/validate_golden_set.py
-
-Exit code is 1 if any error was found
-"""
+# Validate data/eval/golden_set.jsonl before it is ever used to score a retriever.
+# 
+# A golden set with an unverifiable quote is worse than no golden set.
+# 
+# Quotes are checked against the same text the retriever sees.
+# Run from the project root:  python eval/validate_golden_set.py
+# 
+# Exit code is 1 if any error was found
 
 import io
 import json
@@ -154,7 +152,7 @@ def check_quotes(entry: dict, pages_by_source, chunks_by_source) -> Tuple[List[s
             continue
 
         # Does it survive chunking intact
-        # needle is the normalized gold_quote
+        # 'needle' is the normalized gold_quote
         if not any(needle in chunk for chunk in chunks_by_source[source]):
             errors.append(f"quote straddles a chunk boundary, unretrievable: '{preview}'")
 

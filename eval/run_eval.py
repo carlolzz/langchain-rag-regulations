@@ -2,11 +2,10 @@
 # The harness. Runs the golden set through the real retriever, scores it with
 # eval/metrics.py, prints a table and saves the raw numbers.
 #
-# Still no LLM: this is the free, deterministic, seconds-long sweep you run
-# dozens of times while tuning. Generation metrics are a separate run on Day 8.
+# Still no LLM: this is the free, deterministic, seconds-long sweep that is ran dozens of times while tuning. 
 #
-#   uv run python eval/run_eval.py
-#   uv run python eval/run_eval.py --mode dense --collection base_1000_0_pdf_e3s
+# uv run python eval/run_eval.py
+# uv run python eval/run_eval.py --mode dense --collection base_1000_0_pdf_e3s
 
 import argparse
 import json
@@ -89,7 +88,7 @@ def rows_to_markdown(headers: list[str], rows: list[tuple]) -> str:
 def score_by_difficulty(results: List[Tuple[dict, Retrieved]], ks: Tuple[int, ...]) -> Dict[str, dict]:
     """score_in_corpus, once per difficulty tier."""
 
-    # Dictionary of { tier: list of results }, keyed on difficulty, NOT on type
+    # Dictionary of { tier: list of results }, keyed on difficulty, not on type
     # { "lexical": [(entry, retrieved), ...], "paraphrased": [...] }
     groups: Dict[str, list] = defaultdict(list)
     for entry, retrieved in results:
@@ -156,7 +155,7 @@ def save_markdown(scores: dict, by_difficulty: Dict[str, dict], collection_name:
 
 
 # Prints the headline table (one row per k) and the difficulty table, with the in-corpus count in
-# the heading - every number below it has a noise floor of 100/n points, so the n travels with them.
+# - the heading, every number below it has a noise floor of 100/n points, so the n travels with them.
 def print_table(scores: dict, by_difficulty: Dict[str, dict], collection_name: str, mode: str, n_in_corpus: int) -> None:
     """Markdown, pasteable into the README, carrying its own n."""
 
@@ -174,9 +173,10 @@ def print_table(scores: dict, by_difficulty: Dict[str, dict], collection_name: s
 def print_failures(results: List[Tuple[dict, Retrieved]], k: int = 5) -> None:
     """Every in_corpus miss at k, with the comuni it retrieved instead."""
 
-    print(f"\nMisses at k={k}:")
-    misses = 0
+    print(f"\nMisses at k = {k}:")
+    misses: int = 0
     for entry, retrieved in results:
+        # if out of corpus or it hits, continue, it's not a miss
         if entry["type"] != "in_corpus" or hit_at_k(retrieved, entry, k) == 1.0:
             continue
         # anything still here is an in_corpus question with no hit in the top k
@@ -189,7 +189,7 @@ def print_failures(results: List[Tuple[dict, Retrieved]], k: int = 5) -> None:
 
 
 # Gathers the two score populations the threshold has to separate: what a CORRECT chunk scores, and
-# what the BEST chunk scores on a question the corpus cannot answer.
+# - what the best chunk scores on a question the corpus cannot answer.
 def score_distributions(results: List[Tuple[dict, Retrieved]]) -> Tuple[List[tuple], List[tuple]]:
     """Score of the first correct chunk per in_corpus question; top score per out_of_corpus question."""
 
@@ -206,7 +206,7 @@ def score_distributions(results: List[Tuple[dict, Retrieved]]) -> Tuple[List[tup
 
 
 # Prints both score lists sorted and says whether one number can sit between them. If they overlap,
-# no threshold can drive refusal here and the LLM's prompt instruction is doing that work instead.
+# - no threshold can drive refusal here and the LLM's prompt instruction is doing that work instead.
 def print_threshold_report(in_scores: List[tuple], out_scores: List[tuple]) -> None:
     """The threshold is chosen by reading this, not by taste."""
 
@@ -225,7 +225,7 @@ def print_threshold_report(in_scores: List[tuple], out_scores: List[tuple]) -> N
 
 
 # Stamps every results file with the commit that produced it, flagged +dirty when the working tree
-# has uncommitted changes, so it can be traced back to the code behind it.
+# - has uncommitted changes, so it can be traced back to the code behind it.
 def git_commit() -> str:
     """Short hash, with +dirty when the tree has uncommitted changes."""
 

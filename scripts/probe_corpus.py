@@ -1,21 +1,20 @@
-"""Analyzes the existing corpus before the golden set is checked.
-
-Run this on a directory of PDFs before writing a single question. It answers the
-three things that silently waste days if you find them out later:
-
-  1. Is there a text layer at all, or is the PDF scanned?
-  2. Does the text layer have real word spacing? (A PDF can look perfect in a
-     viewer and still extract as "destinazioneadusinonpotabili..." — every
-     hand-copied gold quote would then fail validation for no visible reason.)
-  3. Is there author-provided structure to split on, and how much of the corpus
-     is tables that naive extraction will flatten?
-
-Usage:
-    python -m scripts.probe_corpus                 # probes data/raw
-    python -m scripts.probe_corpus path/to/pdfs
-
-Exits non-zero if any document fails a hard check, so it can gate an ingest.
-"""
+# Analyzes the existing corpus before the golden set is checked.
+# 
+# Run this on a directory of PDFs before writing a single question. It answers the
+# three things that silently waste days if you find them out later:
+# 
+#   1. Is there a text layer at all, or is the PDF scanned?
+#   2. Does the text layer have real word spacing? (A PDF can look perfect in a
+#      viewer and still extract as "destinazioneadusinonpotabili..." — every
+#      hand-copied gold quote would then fail validation for no visible reason.)
+#   3. Is there author-provided structure to split on, and how much of the corpus
+#      is tables that naive extraction will flatten?
+# 
+# Usage:
+#     python -m scripts.probe_corpus                 # probes data/raw
+#     python -m scripts.probe_corpus path/to/pdfs
+# 
+# Exits non-zero if any document fails a hard check, so it can gate an ingest.
 
 from collections import Counter
 from pathlib import Path
