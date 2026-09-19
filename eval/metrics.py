@@ -108,11 +108,12 @@ def score_in_corpus(results: List[Tuple[dict, Retrieved]], ks: Tuple[int, ...]) 
     return scores
 
 
-def score_out_of_corpus(answers: List[Tuple[dict, str]]) -> Dict[str, float]:
+# List[(golden_set_entry, answer), ...]
+def score_out_of_corpus(gold_with_answers: List[Tuple[dict, str]]) -> Dict[str, float]:
     """Refusal rate on out_of_corpus questions, false-refusal rate on in_corpus ones."""
 
-    out_of_corpus_answers = [(gold, answer) for gold, answer in answers if gold["type"] == "out_of_corpus"]
-    in_corpus_answers = [(gold, answer) for gold, answer in answers if gold["type"] == "in_corpus"]
+    out_of_corpus_answers = [(gold, answer) for gold, answer in gold_with_answers if gold["type"] == "out_of_corpus"]
+    in_corpus_answers = [(gold, answer) for gold, answer in gold_with_answers if gold["type"] == "in_corpus"]
 
     out_n_refused = len([answer for _gold, answer in out_of_corpus_answers if refused(answer)])
     out_n = len(out_of_corpus_answers)

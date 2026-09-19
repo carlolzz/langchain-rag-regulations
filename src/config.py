@@ -20,7 +20,7 @@ CHUNKING_CFG: dict = {
 
 
 def get_collection_name(chunking_strategy: str, ext: str = "pdf", embedding_model: str = EMBEDDING_MODEL) -> str:
-    """Constructs the collection name based on the given configuration.
+    """Constructs the collection name based on the given configuration.\n
     Examples: base_1000_0_pdf_e3s, overlap_1000_150_pdf_e3s, article_2000_0_pdf_e3s, semantic_p95_pdf_e3s."""
 
     # cfg = {"splitter": ...}

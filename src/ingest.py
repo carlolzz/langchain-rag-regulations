@@ -14,6 +14,7 @@ import re
 import argparse
 
 from src.config import EMBEDDING_MODEL, EMBEDDING_ABBR, CHUNKING_STRATEGY, CHUNKING_CFG, F_EXT, get_collection_name
+from src.chunking import split_documents_by_article, split_documents_semantics
 
 
 # Load environment variables (OPENAI_API_KEY)
@@ -138,9 +139,9 @@ def split_documents(docs: List[Document], chunking_strategy, ext:str="pdf") -> L
         raise ValueError(f"Unknown chunking strategy '{chunking_strategy}'. Options: {', '.join(CHUNKING_CFG)}")
 
     if cfg["splitter"] == "article":
-        raise NotImplementedError(f"{chunking_strategy} not implemented yet!")
+        return split_documents_by_article(docs, cfg["chunk_size"], cfg["chunk_overlap"])
     if cfg["splitter"] == "semantic":
-        raise NotImplementedError(f"{chunking_strategy} not implemented yet!")
+        return split_documents_semantics(docs, cfg["breakpoint_threshold_amount"], EMBEDDING_MODEL)
 
     chunk_size, chunk_overlap = cfg["chunk_size"], cfg["chunk_overlap"]
 
@@ -240,11 +241,12 @@ def create_vector_store(chunks: List[Document], chunking_strategy: str, ext: str
 
 
 def detect_extension(data_path: Path) -> str:
-    """Detect the extensions of the stored docs in data/raw"""
+    """Detect the extensions of the stored docs in data/raw."""
 
-    # get extensions of all files in data/raw
+    # Get extensions of all files in data/raw
+    # filename.txt -> .txt -> txt
     exts = {p.suffix.lstrip(".").lower() for p in data_path.iterdir() if p.is_file()}
-    # set intersection with existing allowed extensions
+    # Set intersection with existing allowed extensions
     exts &= LOADER_CFG.keys()
     if not exts:
         raise FileNotFoundError(f"No supported files in {data_path}. Supported: {sorted(LOADER_CFG)}")
@@ -281,7 +283,10 @@ if __name__ == "__main__":
         )
 
     # Loading the files, cleaning them, splitting them in chunks, and saving them to a vector db
+    print(f"Loading raw `{ext}` documents...")
     raw_docs = load_documents(ext=ext)
+    print("Cleaning the documents...")
     cleaned_docs = strip_page_furniture(clean_documents(raw_docs))
+    print(f"Splitting documents with strategy {strategy}...")
     chunks = split_documents(cleaned_docs, strategy, ext)
     vector_store = create_vector_store(chunks, strategy, ext, persist_dir="db/chroma_db", replace_db=True)

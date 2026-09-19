@@ -124,6 +124,11 @@ def retrieve(
         mode:str = "dense",
         apply_threshold: bool = True
     ) -> List[Tuple[Document, float]]:
+    """
+    The first part of RAG, the retrieval. Dense, BM25, hybrid or rerank.\n
+    Take the user query, a chroma database path and collection name, an 
+    embedding model, and retrieve the most similar documents to the user query.
+    """
 
     threshold = DEFAULT_THRESHOLDS.get(mode) if apply_threshold else None
 

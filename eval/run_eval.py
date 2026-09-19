@@ -268,11 +268,6 @@ def get_args() -> argparse.Namespace:
         help="Run `uv run python -m src.run_eval --collection <collection_name> --mode <mode>."
     )
 
-    # parser.add_argument(
-    #     "--strategy",
-    #     default=CHUNKING_STRATEGY
-    # )
-
     return parser.parse_args()
 
 

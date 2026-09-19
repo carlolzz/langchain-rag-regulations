@@ -154,7 +154,7 @@ def check_quotes(entry: dict, pages_by_source, chunks_by_source) -> Tuple[List[s
             continue
 
         # Does it survive chunking intact
-        # needle is  normalized gold_quote
+        # needle is the normalized gold_quote
         if not any(needle in chunk for chunk in chunks_by_source[source]):
             errors.append(f"quote straddles a chunk boundary, unretrievable: '{preview}'")
 

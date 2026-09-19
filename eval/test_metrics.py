@@ -57,8 +57,7 @@ def test_normalize_survives_pdf_newlines():
     chunk, _ = make_doc("la lunghezza del segmento minimo\n    congiungente la parete \n più avanzata del fabbricato")
 
     # The PDF carries U+2019, the golden set was typed with U+0027. The two sides must differ:
-    # - with the same apostrophe on both, this passes as a plain substring check and normalize()
-    # - could be deleted without the test noticing.
+    # - with the same apostrophe on both, this passes as a plain substring check and normalize() could be deleted without the test noticing.
     apostrophe_question = make_question(["l'esecuzione di opere di conformazione, sulla base di idonea ordinanza"])
     apostrophe_chunk, _ = make_doc(
         "Il Comune ordina l’esecuzione di opere di conformazione, sulla base di idonea "
@@ -69,7 +68,7 @@ def test_normalize_survives_pdf_newlines():
     assert is_hit(apostrophe_chunk, apostrophe_question)
 
 
-# ranking metrics
+# Ranking metrics
 def test_reciprocal_rank_is_half_at_rank_two():
     """A hit in second place scores exactly 0.5.
     Pins the off-by-one. If enumerate() starts at 0 this returns 1.0 and the
@@ -104,9 +103,7 @@ def test_hit_at_k_respects_k():
     assert hit_at_k(retrieved, question, k=5) == 1.0
 
 
-# ---------------------------------------------------------------------------
-# recall - the multi-quote case
-# ---------------------------------------------------------------------------
+# Recall - the multi-quote case
 def test_recall_is_partial_when_one_of_two_quotes_found():
     """Two gold quotes, one retrieved: recall = 0.5, hit = 1.0."""
 
