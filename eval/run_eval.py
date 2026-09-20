@@ -1,11 +1,11 @@
 
 # The harness. Runs the golden set through the real retriever, scores it with
-# eval/metrics.py, prints a table and saves the raw numbers.
+# - eval/metrics.py, prints a table and saves the raw numbers.
 #
 # Still no LLM: this is the free, deterministic, seconds-long sweep that is ran dozens of times while tuning. 
 #
-# uv run python eval/run_eval.py
-# uv run python eval/run_eval.py --mode dense --collection base_1000_0_pdf_e3s
+# uv run python -m eval.run_eval
+# uv run python -m eval.run_eval --mode dense --collection base_1000_0_pdf_e3s
 
 import argparse
 import json
@@ -16,15 +16,11 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
 from src.config import CHROMA_PATH, CHUNKING_STRATEGY, EMBEDDING_MODEL, F_EXT, get_collection_name
 from src.retrieval import retrieve
 from eval.metrics import Retrieved, score_in_corpus, hit_at_k, is_hit
+from eval.paths import EVAL_RESULTS_DIR, GOLDEN_SET_PATH, PROJECT_ROOT, RESULTS_DIR
 
-GOLDEN_SET_PATH = PROJECT_ROOT / "data" / "eval" / "golden_set.jsonl"
-RESULTS_DIR = PROJECT_ROOT / "eval" / "results"
 K_HEADERS = ["k", "hit@k", "recall@k"]
 TIER_HEADERS = ["difficulty", "n", "hit@1", "hit@3", "hit@5", "MRR"]
 
@@ -127,8 +123,8 @@ def build_rows(scores: dict, by_difficulty: Dict[str, dict]) -> Tuple[List[tuple
 # so a table can be pasted into the README later without re-running the sweep to remember it.
 def save_markdown(scores: dict, by_difficulty: Dict[str, dict], collection_name: str, mode:str, n_in_corpus: int) -> Path:
 
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = RESULTS_DIR / f"{collection_name}__{mode}.md"
+    EVAL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = EVAL_RESULTS_DIR / f"{collection_name}__{mode}.md"
 
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     k_rows, tier_rows = build_rows(scores, by_difficulty)
@@ -241,9 +237,9 @@ def git_commit() -> str:
 def save_results(payload: dict, collection_name: str, mode: str) -> Path:
     """Write eval/results/<collection>__<mode>.json."""
 
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    EVAL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     # Two underscores: make_tables.py globs "*__*.json", and collection names contain single ones
-    out_path = RESULTS_DIR / f"{collection_name}__{mode}.json"
+    out_path = EVAL_RESULTS_DIR / f"{collection_name}__{mode}.json"
     out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding='utf-8')
 
     return out_path

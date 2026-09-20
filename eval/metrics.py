@@ -10,8 +10,6 @@ from typing import Dict, List, Tuple
 from langchain_core.documents import Document
 
 REFUSAL_PHRASE: str = "could not find any relevant information"
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
 
 
 # U+2019 -> U+0027 and strips soft hyphens, both of which this corpus needs

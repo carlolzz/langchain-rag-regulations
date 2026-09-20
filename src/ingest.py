@@ -13,7 +13,7 @@ import hashlib
 import re
 import argparse
 
-from src.config import EMBEDDING_MODEL, EMBEDDING_ABBR, CHUNKING_STRATEGY, CHUNKING_CFG, F_EXT, get_collection_name
+from src.config import EMBEDDING_MODEL, CHUNKING_STRATEGY, CHUNKING_CFG, F_EXT, SEP_WIDTH, get_collection_name
 from src.chunking import split_documents_by_article, split_documents_semantics
 
 
@@ -139,7 +139,7 @@ def split_documents(docs: List[Document], chunking_strategy, ext:str="pdf") -> L
         raise ValueError(f"Unknown chunking strategy '{chunking_strategy}'. Options: {', '.join(CHUNKING_CFG)}")
 
     if cfg["splitter"] == "article":
-        return split_documents_by_article(docs, cfg["chunk_size"], cfg["chunk_overlap"])
+        return split_documents_by_article(docs)
     if cfg["splitter"] == "semantic":
         return split_documents_semantics(docs, cfg["breakpoint_threshold_amount"], EMBEDDING_MODEL)
 
@@ -161,9 +161,9 @@ def split_documents(docs: List[Document], chunking_strategy, ext:str="pdf") -> L
 
     chunks = text_splitter.split_documents(docs)
 
-    n = 5
+    show_n = 3
     if chunks:
-        for idx, chunk in enumerate(chunks[:n]):
+        for idx, chunk in enumerate(chunks[:show_n]):
             print(f"=" * 100)
             print(f"\n===== Chunk {idx + 1} =====")
             print(f"Source: {chunk.metadata['source']}")
@@ -171,8 +171,8 @@ def split_documents(docs: List[Document], chunking_strategy, ext:str="pdf") -> L
             print(f"Content: {chunk.page_content}")
             print(f"=" * 100)
 
-    if len(chunks) > n:
-        print(f"\n{len(chunks) - n} more chunks remaining.")
+    if len(chunks) > show_n:
+        print(f"\n{len(chunks) - show_n} more chunks remaining.")
 
     return chunks
 
@@ -268,6 +268,7 @@ def get_args() -> argparse.Namespace:
     return args
 
 
+# uv run python -m src.ingest --strategy base/overlap/article/semantic_p95
 if __name__ == "__main__":
 
     args = get_args()
@@ -278,15 +279,19 @@ if __name__ == "__main__":
 
     if ext != F_EXT:
         raise ValueError(
-            f"config.EXT is {F_EXT} but {DATA_RAW_DIR} contains .{ext}"
-            f"The collection name derives from this, update one or the other."
+            f"config.EXT is '{F_EXT}' but '{DATA_RAW_DIR}' contains '.{ext}'"
+            f"They must be equal, update one or the other."
         )
 
     # Loading the files, cleaning them, splitting them in chunks, and saving them to a vector db
+    print("=" * SEP_WIDTH)
     print(f"Loading raw `{ext}` documents...")
     raw_docs = load_documents(ext=ext)
+    print("=" * SEP_WIDTH)
     print("Cleaning the documents...")
     cleaned_docs = strip_page_furniture(clean_documents(raw_docs))
+    print("=" * SEP_WIDTH)
     print(f"Splitting documents with strategy {strategy}...")
     chunks = split_documents(cleaned_docs, strategy, ext)
+    print("=" * SEP_WIDTH)
     vector_store = create_vector_store(chunks, strategy, ext, persist_dir="db/chroma_db", replace_db=True)

@@ -28,6 +28,7 @@ def build_context(relevant_docs: List[Tuple[Document, float]]) -> str:
 
 # History aware RAG -> query reformulation
 def generate_answer(relevant_docs: List[Tuple[Document, float]], user_query: str, model_name: str = "gpt-4o") -> str:
+    """From a given user question, generate answer with a given LLM and relevant context."""
 
     model = ChatOpenAI(model=model_name)
 

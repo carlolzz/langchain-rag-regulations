@@ -4,7 +4,7 @@
 # A golden set with an unverifiable quote is worse than no golden set.
 # 
 # Quotes are checked against the same text the retriever sees.
-# Run from the project root:  python eval/validate_golden_set.py
+# Run from the project root: uv run python -m eval.validate_golden_set
 # 
 # Exit code is 1 if any error was found
 
@@ -19,7 +19,6 @@ from typing import Dict, List, Tuple
 import argparse
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.config import CHUNKING_STRATEGY, CHUNKING_CFG, F_EXT
 from src.ingest import load_documents, clean_documents, strip_page_furniture, split_documents

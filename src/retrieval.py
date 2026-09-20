@@ -125,9 +125,10 @@ def retrieve(
         apply_threshold: bool = True
     ) -> List[Tuple[Document, float]]:
     """
-    The first part of RAG, the retrieval. Dense, BM25, hybrid or rerank.\n
+    The first part of RAG, the retrieval.
     Take the user query, a chroma database path and collection name, an 
-    embedding model, and retrieve the most similar documents to the user query.
+    embedding model, and retrieve the most similar documents to the user query.\n
+    'Mode' indicates the retrieval technique: dense, bm25, hybrid, or rerank    .
     """
 
     threshold = DEFAULT_THRESHOLDS.get(mode) if apply_threshold else None
@@ -156,6 +157,7 @@ def retrieve(
         ])[:k]
     elif mode == "rerank":
         from src.rerank import rerank
+        # Dense, then rerank with a cross-encoder
         candidates = retrieve(
             chroma_path, 
             query, 

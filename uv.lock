@@ -2854,7 +2854,7 @@ requires-dist = [
     { name = "langchain-text-splitters", specifier = ">=1.1.2" },
     { name = "pypdf", specifier = ">=6.15.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
-    { name = "ragas", specifier = ">=0.4.3" },
+    { name = "ragas", specifier = "==0.4.3" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
     { name = "sentence-transformers", specifier = ">=6.0.1" },
 ]

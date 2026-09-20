@@ -4,14 +4,15 @@ from src.generate import generate_answer
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langchain_openai import ChatOpenAI
 from typing import List, Optional, Tuple
-from src.config import CHUNKING_STRATEGY, F_EXT, CHROMA_PATH, EMBEDDING_MODEL, LLM_MODEL, get_collection_name
+from src.config import (
+    CHUNKING_STRATEGY, F_EXT, CHROMA_PATH, EMBEDDING_MODEL, LLM_MODEL, SEP_WIDTH, get_collection_name
+)
 
 
-SEP_WIDTH = 100
 CHAT_HISTORY = []
-MAX_HISTORY_TURNS = 4
-NO_CONTEXT_MSG = "Could not find any relevant information in the corpus."
-REWRITE_SYSTEM_PROMPT = """Given the chat history, rewrite the user's new question so that it can be understood on its own, without the history. 
+MAX_HISTORY_TURNS: int = 4
+NO_CONTEXT_MSG: str = "Could not find any relevant information in the corpus."
+REWRITE_SYSTEM_PROMPT: str = """Given the chat history, rewrite the user's new question so that it can be understood on its own, without the history. 
 Resolve pronouns and implicit references into explicit terms. Do not answer the question. 
 If the question is already self-contained, return it unchanged. Return only the rewritten question, with no preamble.
 """
@@ -46,19 +47,20 @@ def print_response(response_text: str, sources: set) -> None:
     print("=" * SEP_WIDTH + "\n")
 
 
-def ask(query: str, emb_model_name: str, llm_model: str, history: Optional[List[BaseMessage]] = None, history_aware: bool=True) -> Tuple[str, set]:
+def ask(query: str, mode: str, emb_model_name: str, llm_model: str, history: Optional[List[BaseMessage]] = None, history_aware: bool=True) -> Tuple[str, set]:
 
     # Not a mutable default argument, the list would be shared by every call
     history = history if history is not None else []
     search_query = rewrite_query(query, history, llm_model) if history_aware else query
 
     # Get relevant documents
-    # Collection name not hardcoded
+    # Collection name constructed by what is defined in src.config
     relevant_docs = retrieve(
         chroma_path=CHROMA_PATH, 
         query=search_query, 
         collection_name=get_collection_name(CHUNKING_STRATEGY, F_EXT, emb_model_name),
-        emb_model_name=emb_model_name
+        emb_model_name=emb_model_name,
+        mode=mode,
     ) 
 
     if not relevant_docs:
@@ -80,7 +82,7 @@ def ask(query: str, emb_model_name: str, llm_model: str, history: Optional[List[
     return answer, sources
 
 
-def start_chat_cli():
+def start_chat_cli(mode: str = "dense"):
 
     print("Ask me questions! Type '!quit' or '!q' to exit.")
 
@@ -88,7 +90,7 @@ def start_chat_cli():
 
     while True:
         
-        question = input("\nYour question:").strip()
+        question = input("\nYour question (!q or !quit to quit):").strip()
 
         if not question:
             continue
@@ -96,6 +98,7 @@ def start_chat_cli():
             break
         answer, sources = ask(
             query=question, 
+            mode=mode,
             emb_model_name=EMBEDDING_MODEL, 
             llm_model=LLM_MODEL, 
             history=history,
